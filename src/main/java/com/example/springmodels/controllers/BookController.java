@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,17 +56,40 @@ public class BookController {
 
     @PostMapping
     public String createBook(@Valid @ModelAttribute("book") BookModel book,
-                             BindingResult bindingResult) {
+                             BindingResult bindingResult, Model model) {
         if (bindingResult.hasErrors()) {
             return "books/new";
         }
-
-        BookDetailModel bookDetail = book.getBookDetail();
-        bookDetail.setBook(book);
-        bookRepository.save(book);
-        return "redirect:/books";
+        String resultSave = saveDataBook(book);
+        if (resultSave.equals("Успешно")) return "redirect:/books";
+        else {
+            model.addAttribute("errorMessage", resultSave);
+            return "books/index";
+        }
+    }
+    @PostMapping("/update/{id}")
+    public String updateBook(@PathVariable Long id, @Valid @ModelAttribute("book") BookModel book, BindingResult bindingResult, Model model) {
+        if (bindingResult.hasErrors()) {
+            return "books/edit";
+        }
+        String resultSave = saveDataBook(book);
+        if (resultSave.equals("Успешно")) return "redirect:/books";
+            else {
+                model.addAttribute("errorMessage", resultSave);
+                return "books/index";
+            }
     }
 
+    private String saveDataBook(BookModel book){
+        BookDetailModel bookDetail = book.getBookDetail();
+        if(bookDetail!=null){
+            bookDetail.setBook(book);
+            bookRepository.save(book);
+            return "Успешно";
+        }else{
+            return "Не удалось сохранить книгу";
+        }
+    }
 
     @GetMapping("/{id}/edit")
     public String editBookForm(@PathVariable Long id, Model model) {
@@ -73,17 +97,6 @@ public class BookController {
         model.addAttribute("book", book.orElse(null));
         model.addAttribute("categories", categoryRepository.findAll());
         return "books/edit";
-    }
-
-    @PostMapping("/update/{id}")
-    public String updateBook(@PathVariable Long id, @Valid @ModelAttribute("book") BookModel book, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            return "books/edit";
-        }
-        BookDetailModel bookDetail = book.getBookDetail();
-        bookDetail.setBook(book);
-        bookRepository.save(book);
-        return "redirect:/books";
     }
 
     @PostMapping("/delete/{id}")
@@ -95,6 +108,7 @@ public class BookController {
     @GetMapping("/search")
     public String searchByAuthor(@RequestParam("author") String author, Model model) {
         List<BookModel> booksByAuthor = bookRepository.findByAuthor(author);
+
         model.addAttribute("books", booksByAuthor);
         return "books/search_results";
     }
